@@ -1,6 +1,8 @@
+/home/tanmay/autonomy_ws/install/autonomy_repo/lib/autonomy_repo/navigator.py
 /home/tanmay/autonomy_ws/install/autonomy_repo/lib/autonomy_repo/heading_controller.py
 /home/tanmay/autonomy_ws/install/autonomy_repo/lib/autonomy_repo/p3_plot.py
 /home/tanmay/autonomy_ws/install/autonomy_repo/share/autonomy_repo/launch/heading_control.launch.py
+/home/tanmay/autonomy_ws/install/autonomy_repo/share/autonomy_repo/launch/navigator.launch.py
 /home/tanmay/autonomy_ws/install/autonomy_repo/share/autonomy_repo/rviz/default.rviz
 /home/tanmay/autonomy_ws/install/autonomy_repo/share/ament_index/resource_index/package_run_dependencies/autonomy_repo
 /home/tanmay/autonomy_ws/install/autonomy_repo/share/ament_index/resource_index/parent_prefix_path/autonomy_repo

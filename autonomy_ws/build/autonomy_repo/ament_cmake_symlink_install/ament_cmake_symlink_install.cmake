@@ -310,8 +310,8 @@ message(STATUS "Execute custom install script")
 
 # begin of custom install code
 
-# install(PROGRAMS "scripts/heading_controller.py" "scripts/p3_plot.py" "DESTINATION" "lib/autonomy_repo")
-ament_cmake_symlink_install_programs("/home/tanmay/autonomy_ws/src/autonomy_repo" PROGRAMS "scripts/heading_controller.py" "scripts/p3_plot.py" "DESTINATION" "lib/autonomy_repo")
+# install(PROGRAMS "scripts/navigator.py" "scripts/heading_controller.py" "scripts/p3_plot.py" "DESTINATION" "lib/autonomy_repo")
+ament_cmake_symlink_install_programs("/home/tanmay/autonomy_ws/src/autonomy_repo" PROGRAMS "scripts/navigator.py" "scripts/heading_controller.py" "scripts/p3_plot.py" "DESTINATION" "lib/autonomy_repo")
 
 # install(DIRECTORY "launch" "rviz" "DESTINATION" "share/autonomy_repo")
 ament_cmake_symlink_install_directory("/home/tanmay/autonomy_ws/src/autonomy_repo" DIRECTORY "launch" "rviz" "DESTINATION" "share/autonomy_repo")

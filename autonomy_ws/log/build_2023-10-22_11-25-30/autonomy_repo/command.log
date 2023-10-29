@@ -1,0 +1,6 @@
+Invoking command in '/home/tanmay/autonomy_ws/build/autonomy_repo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/tanmay/autonomy_ws/src/autonomy_repo -DCMAKE_INSTALL_PREFIX=/home/tanmay/autonomy_ws/install/autonomy_repo
+Invoked command in '/home/tanmay/autonomy_ws/build/autonomy_repo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/tanmay/autonomy_ws/src/autonomy_repo -DCMAKE_INSTALL_PREFIX=/home/tanmay/autonomy_ws/install/autonomy_repo
+Invoking command in '/home/tanmay/autonomy_ws/build/autonomy_repo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/tanmay/autonomy_ws/build/autonomy_repo -- -j4 -l4
+Invoked command in '/home/tanmay/autonomy_ws/build/autonomy_repo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/tanmay/autonomy_ws/build/autonomy_repo -- -j4 -l4
+Invoking command in '/home/tanmay/autonomy_ws/build/autonomy_repo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/tanmay/autonomy_ws/build/autonomy_repo
+Invoked command in '/home/tanmay/autonomy_ws/build/autonomy_repo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/tanmay/autonomy_ws/build/autonomy_repo
