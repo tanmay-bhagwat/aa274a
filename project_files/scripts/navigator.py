@@ -84,20 +84,31 @@ class Navigator(BaseNavigator):
         ydd_d = scipy.interpolate.splev(t, plan.path_y_spline, der=2)
         
         ########## Code starts here ##########
-        u1=xdd_d+self.kpx*(x_d-state.x)+self.kdx*(xd_d-self.V_prev*np.cos(th))
-        u2=ydd_d+self.kpy*(y_d-state.y)+self.kdy*(yd_d-self.V_prev*np.sin(th))
+        
+        if abs(self.V_prev)<V_PREV_THRES:
+            self.V_prev = V_PREV_THRES
+        v = self.V_prev
 
-        V= self.V_prev+(np.cos(th)*u1+np.sin(th)*u2)*dt
-        if(V<self.V_PREV_THRES):
-            V=self.V_PREV_THRES
-        om=((-u1*np.sin(th)+u2*np.cos(th))/V)
+        vx = v*np.cos(th)
+        vy = v*np.sin(th)
+        J = np.array([[np.cos(th), -vy], 
+                      [np.sin(th), vx]])
+        virtual_control = np.zeros((2,))
+        virtual_control[0] = xdd_d + self.kdx*(xd_d-vx) + self.kpx*(x_d-x)
+        virtual_control[1] = ydd_d + self.kdy*(yd_d-vy) + self.kpy*(y_d-y)
+        controls = np.linalg.solve(J, virtual_control)
+        v_new = controls[0]*dt + v
+
+        if abs(v_new)<V_PREV_THRES:
+            V = V_PREV_THRES
+        else:
+            V = v_new
+        om = controls[1]
+
         ########## Code ends here ##########
 
-        """
-        # apply control limits
         V = np.clip(V, -self.V_max, self.V_max)
         om = np.clip(om, -self.om_max, self.om_max)
-        """
 
         # save the commands that were applied and the time
         self.t_prev = t
@@ -132,29 +143,27 @@ class Navigator(BaseNavigator):
         statespace_lo = (state.x - horizon, state.y - horizon)
         statespace_hi = (state.x + horizon, state.y + horizon)
         astar = AStar(statespace_lo, statespace_hi, (state.x, state.y), (goal.x, goal.y), occupancy, resolution)
-        if not astar.solve():
+        path = astar.reconstruct_path()
+        if path is None:
             return None
-        elif len(astar.path) < 4:
-            return None
-        self.t_prev = 0
-        self.V_prev = 0
+        ts = [0]*len(path)
+        x_vals = [path[0][0]]
+        y_vals = [path[0][1]]
+        path_x_spline = None
+        path_y_spline = None
+    
+        for i in range(1,len(path)):
+            cur_state = np.array(path[i])
+            x_vals.append(cur_state[0])
+            y_vals.append(cur_state[1])
+    
+            prev_state = np.array(path[i-1])
+            dt = np.sqrt(np.sum((cur_state-prev_state)**2))/v_desired
+            ts[i] = ts[i-1] + dt
+        
+        path_x_spline = scipy.interpolate.splrep(x=ts, y=x_vals, s=spline_alpha)
+        path_y_spline = scipy.interpolate.splrep(x=ts, y=y_vals, s=spline_alpha)
 
-        ts = []
-        current_t = 0
-        for i in range(len(astar.path)):
-            if i == 0:
-                ts.append(current_t)
-            else:
-                current_t += np.linalg.norm(np.array(astar.path[i])- np.array(astar.path[i - 1])) / v_desired
-                ts.append(current_t)
-        
-        pathArray = np.asarray(astar.path)
-        x_path = pathArray[:, 0]
-        y_path = pathArray[:, 1]
-        
-        path_x_spline = scipy.interpolate.splrep(ts, x_path, k=3, s = spline_alpha)
-        path_y_spline = scipy.interpolate.splrep(ts, y_path, k=3, s = spline_alpha)
-        
         return TrajectoryPlan(
             path=pathArray,
             path_x_spline=path_x_spline,
@@ -198,33 +207,11 @@ class AStar(object):
         Hint: self.occupancy is a DetOccupancyGrid2D object, take a look at its methods for what might be
               useful here
         """
-        ########## Code starts here ########
-        # With margins
-        """
-        if self.occupancy.is_free(x) == False:
-            # inside an obstacle
-            return False
-        elif x[0] < self.statespace_lo[0] + self.occupancy.width * .01 or \
-             x[1] < self.statespace_lo[1] + self.occupancy.height * .01 or \
-             x[0] > self.statespace_hi[0] - self.occupancy.width * .01 or \
-             x[1] > self.statespace_hi[1] - self.occupancy.height * .01:
-            # at end of grid
-            return False
-        return True
-        """
-        # Without margins
-        
-        if self.occupancy.is_free(np.array(x)) == False:
-            # inside an obstacle
-            return False
-        elif x[0] < self.statespace_lo[0] or \
-             x[1] < self.statespace_lo[1] or \
-             x[0] > self.statespace_hi[0] or \
-             x[1] > self.statespace_hi[1]:
-            # at end of grid
-            return False
-        return True
-        
+        ########## Code starts here ##########
+       
+        occ = self.occupancy
+        return occ.is_free(x)
+    
         ########## Code ends here ##########
 
     def distance(self, x1, x2):
@@ -239,7 +226,9 @@ class AStar(object):
         HINT: This should take one line. Tuples can be converted to numpy arrays using np.array().
         """
         ########## Code starts here ##########
-        return np.linalg.norm(np.array(x1) -  np.array(x2))
+        
+        return np.sqrt(np.sum((np.array(x1) - np.array(x2))**2))
+    
         ########## Code ends here ##########
 
     def snap_to_grid(self, x):
@@ -275,21 +264,46 @@ class AStar(object):
         """
         neighbors = []
         ########## Code starts here ##########
+        
+        # move east
+        new_state = self.snap_to_grid((x[0] + self.resolution, x[1]))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
 
-        candidates = []
+        # move west
+        new_state = self.snap_to_grid((x[0] - self.resolution, x[1]))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
 
-        # Get 8 possible neighbors in all 8 possible directions
-        deltas = [-self.resolution, 0, self.resolution]
-        for delta1 in deltas:
-            for delta2 in deltas:
-                candidates.append(self.snap_to_grid((x[0] + delta1, x[1] + delta2)))
-        # remove possibility caused by for loops of neighbor being equal to original
-        del candidates[4]
+        # move south
+        new_state = self.snap_to_grid((x[0], x[1] - self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
+        
+        # move north
+        new_state = self.snap_to_grid((x[0], x[1] + self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
 
-        # only add free candidates to neighbors
-        for i in range(len(candidates)):
-            if self.is_free(np.asarray(candidates[i])):
-                neighbors.append(candidates[i])
+        # move NW
+        new_state = self.snap_to_grid((x[0] - self.resolution, x[1] + self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
+
+        # move NE
+        new_state = self.snap_to_grid((x[0] + self.resolution, x[1] + self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
+
+        # move SW
+        new_state = self.snap_to_grid((x[0] - self.resolution, x[1] - self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
+
+        # move SE
+        new_state = self.snap_to_grid((x[0] + self.resolution, x[1] - self.resolution))
+        if self.occupancy.is_free(new_state) and new_state != x:
+            neighbors.append(new_state)
 
         ########## Code ends here ##########
         return neighbors
@@ -315,32 +329,6 @@ class AStar(object):
             current = path[-1]
         return list(reversed(path))
 
-    """
-    def plot_path(self, fig_num=0, show_init_label=True):
-        #Plots the path found in self.path and the obstacles
-        if not self.path:
-            return
-
-        self.occupancy.plot(fig_num)
-
-        solution_path = np.asarray(self.path)
-        plt.plot(solution_path[:,0],solution_path[:,1], color="green", linewidth=2, label="A* solution path", zorder=10)
-        plt.scatter([self.x_init[0], self.x_goal[0]], [self.x_init[1], self.x_goal[1]], color="green", s=30, zorder=10)
-        if show_init_label:
-            plt.annotate(r"$x_{init}$", np.array(self.x_init) + np.array([.2, .2]), fontsize=16)
-        plt.annotate(r"$x_{goal}$", np.array(self.x_goal) + np.array([.2, .2]), fontsize=16)
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.03), fancybox=True, ncol=3)
-
-        plt.axis([0, self.occupancy.width, 0, self.occupancy.height])
-
-    def plot_tree(self, point_size=15):
-        plot_line_segments([(x, self.came_from[x]) for x in self.open_set if x != self.x_init], linewidth=1, color="blue", alpha=0.2)
-        plot_line_segments([(x, self.came_from[x]) for x in self.closed_set if x != self.x_init], linewidth=1, color="blue", alpha=0.2)
-        px = [x[0] for x in self.open_set | self.closed_set if x != self.x_init and x != self.x_goal]
-        py = [x[1] for x in self.open_set | self.closed_set if x != self.x_init and x != self.x_goal]
-        plt.scatter(px, py, color="blue", s=point_size, zorder=10, alpha=0.2)
-    """
-
     def solve(self):
         """
         Solves the planning problem using the A* search algorithm. It places
@@ -357,55 +345,31 @@ class AStar(object):
                 set membership efficiently using the syntax "if item in set".
         """
         ########## Code starts here ##########
+        
+        MAX_VALUE = 1e10
 
-        # first 4 initialization steps already done in __init__
-
-        while len(self.open_set) > 0:
-            # let x_current be the state with the lowest est_cost_through
-            current = self.find_best_est_cost_through()
-            
-            # if x_current is the goal state, reconstruct path
-            if current == self.x_goal:
+        while len(self.open_set)>0:
+            cur_node = self.find_best_est_cost_through()
+            if cur_node == self.x_goal:
                 self.path = self.reconstruct_path()
                 return True
-            
-            # remove x_current from open set
-            self.open_set.remove(current)
-
-            # add x_current to closed set
-            self.closed_set.add(current)
-
-            # iterate over all neighbors of current
-            for neighbor in self.get_neighbors(current):
-
-                # if neighbor is in the closed set already, skip it
-                if neighbor in self.closed_set:
-                    continue
-
-                # tentative cost to arrive at neighbor is cost to arrive to current + distance(current, neighbor)
-                tentative_cost_to_arrive = self.cost_to_arrive[current] + self.distance(current, neighbor)
-
-                # if neighbor is not in the open set, add it to the open set; otherwise, if the calculated tentative cost to arrive
-                # at the neighbor is more than the existing cost to arrive at the neighbor, skip this iteration; it's a worse path
-                if (neighbor in self.open_set) == False:
-                    self.open_set.add(neighbor)
-                elif neighbor in self.cost_to_arrive.keys():
-                    if tentative_cost_to_arrive > self.cost_to_arrive[neighbor]:
+            else:
+                self.open_set.remove(cur_node)
+                self.closed_set.add(cur_node) # Use closed set to avoid looping paths
+                children = self.get_neighbors(cur_node)
+                for child in children:
+                    if child in self.closed_set:
                         continue
-
-                # neighbor came from current
-                self.came_from[neighbor] = current
-
-                # cost to arrive to neighbor is the tentative cost we calculated
-                self.cost_to_arrive[neighbor] = tentative_cost_to_arrive
-
-                # estimated cost to goal through neighbor is tentative cost to arrive to neighbor plus distance from neighbor to goal
-                self.est_cost_through[neighbor] = tentative_cost_to_arrive + self.distance(neighbor, self.x_goal)
-            
-
-        # if path wasn't reconstructed, something went wrong
+                    elif child not in self.open_set:
+                        self.open_set.add(child)
+                        self.cost_to_arrive[child] = MAX_VALUE
+                
+                    if self.cost_to_arrive[child] >= self.cost_to_arrive[cur_node] + self.distance(child, cur_node):
+                        self.cost_to_arrive[child] = self.cost_to_arrive[cur_node] + self.distance(child, cur_node)
+                        self.came_from[child] = cur_node
+                        self.est_cost_through[child] = self.cost_to_arrive[child] + self.distance(child, self.x_goal)
         return False
-
+    
         ########## Code ends here ##########
 
 class DetOccupancyGrid2D(object):
