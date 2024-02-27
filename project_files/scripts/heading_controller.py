@@ -12,18 +12,12 @@ class HeadingController(BaseHeadingController):
         super().__init__("HeadingController")  # initialize base class
         self.kp =2.0
 
-    def compute_control_with_goal(self, TurtleBot_current_state:TurtleBotState,TurtleBot_desired_state:TurtleBotState)-> TurtleBotControl: 
-        
-        heading_error = TurtleBot_desired_state.theta - TurtleBot_current_state.theta
-        if heading_error > np.pi:
-            heading_error -= 2 * np.pi
-        elif heading_error < -np.pi:
-            heading_error += 2 * np.pi
-             
-        ContrlMess= TurtleBotControl()
-        ContrlMess.omega = self.kp *heading_error
-        
-        return ContrlMess
+    def compute_control_with_goal(self, state: TurtleBotState, goal: TurtleBotState) -> TurtleBotControl:
+        err = wrap_angle(goal.theta - state.theta)
+        om = HeadingController.kp*err
+        control = TurtleBotControl()
+        control.omega = om
+        return control
     
 if __name__ == '__main__':
     rclpy.init()
