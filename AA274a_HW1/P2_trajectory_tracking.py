@@ -71,8 +71,12 @@ class TrajectoryTracker:
         J = np.array([[np.cos(th), -vy], 
                       [np.sin(th), vx]])
         virtual_control = np.zeros((2,))
+
+        # Error tracking as zdd = zdd_d + edd (where e = x_d-x), to get closed-loop controls
         virtual_control[0] = xdd_d + self.kdx*(xd_d-vx) + self.kpx*(x_d-x)
         virtual_control[1] = ydd_d + self.kdy*(yd_d-vy) + self.kpy*(y_d-y)
+
+        # From differential flatness
         controls = np.linalg.solve(J, virtual_control)
         v_new = controls[0]*dt + v
 
