@@ -41,6 +41,9 @@ def compute_traj_coeffs(initial_state: State, final_state: State, tf: float) -> 
                     initial_state.xd, initial_state.yd, final_state.xd, final_state.yd])
     b.reshape(-1,1)
     A = np.zeros((8,8))
+
+    # Implement basis expansion in (1,t,t^2,t^3) for flat outputs (x,y)
+    # States along rows
     A[0,0], A[1,4] = 1,1
     A[2,:4], A[3,4:] = np.array([1,tf,tf**2, tf**3]), np.array([1,tf,tf**2, tf**3])
     A[4,1], A[5,5] = 1,1
