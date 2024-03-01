@@ -5,3 +5,4 @@ Repository of all hw files and project work for AA274A \
 <ins>HW3</ins>: Camera extrinsics matrix and feature extraction (using OpenCV); PnP; YOLO for object detection in PyTorch \
 <ins>HW4</ins>: Frontier exploration and stochastic occupancy mapping \
 <ins>HW5</ins>: Kalman Filter, Extended Kalman filter and particle filter
+<ins>project</ins>: Final project work to run launch files to run ROS Nodes for object detection, classification in YOLO and state estimation through LIDAR pointcloud through ICP and EKF
