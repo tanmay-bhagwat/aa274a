@@ -97,6 +97,14 @@ class AStar(object):
         neighbors = []
         ########## Code starts here ##########
         # raise NotImplementedError("get_neighbors not implemented")
+
+        # Easier way than this hard coding? Nested for-loops?
+        # for i in range(-1,2):
+        #     for j in range(-1,2):
+        #         new_state = self.snap_to_grid((x[0] + i*self.resolution, x[1] + j*self.resolution))
+        #         if self.is_free(new_state) and new_state != x:
+        #             neighbors.append(new_state)
+        
         # move east
         new_state = self.snap_to_grid((x[0] + self.resolution, x[1]))
         if self.occupancy.is_free(new_state) and new_state != x:
@@ -154,6 +162,10 @@ class AStar(object):
         Output:
             A list of tuples, which is a list of the states that go from start to goal
         """
+        # Remember that this is only the geometric path (in C-space) and may not be dynamically feasible (since no control inputs used!)
+        # Hence, we would then pass this geometric path from A* to the trajectory opt solver to get control inputs 
+        # and even discard/ add new states
+        
         path = [self.x_goal]
         current = path[-1]
         while current != self.x_init:
