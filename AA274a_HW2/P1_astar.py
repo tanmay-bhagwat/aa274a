@@ -214,6 +214,9 @@ class AStar(object):
         """
         ########## Code starts here ##########
         # raise NotImplementedError("solve not implemented")
+        
+        # Might have been more general to solve using Bellman's criterion and from goal state back to initial state
+        # In that case,  only need cost_to_go from query node to goal node to decide optimal path
         MAX_VALUE = 1e10
 
         while len(self.open_set)>0:
